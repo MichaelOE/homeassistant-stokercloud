@@ -97,7 +97,8 @@ class StokerCloudSensor(CoordinatorEntity, SensorEntity):
         """Handle updated data from the coordinator."""
         data_available = False
 
-        if self.entity_description.key:
+        # if self.entity_description.key:
+        if self.entity_description.key in self.coordinator.data:
             val = self.coordinator.data[self.entity_description.key]
 
             if "state" in self.entity_description.key:
@@ -107,6 +108,10 @@ class StokerCloudSensor(CoordinatorEntity, SensorEntity):
 
             data_available = True
             self._attr_available = data_available
+        else:
+            _LOGGER.warning(
+                f"The item {self.entity_description.key} is not returned from the 'cloud'"
+            )
 
         # Only call async_write_ha_state if the state has changed
         if data_available:
