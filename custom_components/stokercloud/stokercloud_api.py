@@ -30,7 +30,13 @@ class Client:
 
     async def refresh_token(self):
         async with aiohttp.ClientSession() as session:
-            url = urljoin(self.BASE_URL, "v2/dataout2/login.php?user=" + self.name)
+            url = urljoin(
+                self.BASE_URL,
+                "v2/dataout2/login.php?user="
+                + self.name
+                + "&password="
+                + self.password,
+            )
             async with session.get(url) as response:
                 data = await response.json()
                 self.token = data["token"]  # actual token
@@ -49,7 +55,7 @@ class Client:
             await self.refresh_token()
             return await self.make_request(url, *args, **kwargs)
 
-    async def update_controller_data(self):
+    async def get_controller_data(self):
         self.cached_data = await self.make_request("v2/dataout2/controllerdata2.php")
         self.last_fetch = time.time()
 
@@ -58,7 +64,7 @@ class Client:
             not self.last_fetch
             or (time.time() - self.last_fetch) > self.cache_time_seconds
         ):
-            await self.update_controller_data()
+            await self.get_controller_data()
         return ControllerData(self.cached_data)
 
     async def controller_data_json(self):
@@ -66,8 +72,15 @@ class Client:
             not self.last_fetch
             or (time.time() - self.last_fetch) > self.cache_time_seconds
         ):
-            await self.update_controller_data()
+            await self.get_controller_data()
         return self.flatten_json(self.cached_data)
+
+    async def update_controller_value(self, menu, name, value):
+        urlPart = f"v2/dataout2/updatevalue.php?token={self.token}&menu={menu}&name={name}&value={value}"
+        res = await self.make_request(urlPart)
+
+        retval = Value(res["updated_value"], Unit.KILO_GRAM)
+        return retval
 
     def flatten_json(self, jsonIn):
         out = {}
@@ -119,7 +132,7 @@ STATE_BY_VALUE = {key.value: key for key in State}
 
 class Value:
     def __init__(self, value, unit):
-        self.value = decimal.Decimal(value)
+        self.value = decimal.Decimal(value) / 10
         self.unit = unit
 
     def __eq__(self, other):

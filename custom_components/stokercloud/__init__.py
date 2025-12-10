@@ -1,15 +1,18 @@
-"""NBE Stoker Cloud"""
+"""The Stokercloud integration."""
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import field
 from datetime import timedelta
 import logging
+from typing import Any
 
-from homeassistant.components.sensor import SensorEntityDescription
+import voluptuous as vol
+
+from homeassistant.components.number import NumberEntityDescription
+from homeassistant.components.sensor import SensorEntityDescription, dataclass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_USERNAME, Platform
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN
@@ -17,23 +20,26 @@ from .stokercloud_api import Client as StokerCloudClient
 
 _LOGGER = logging.getLogger(__name__)
 
-# PLATFORMS: list[Platform] = [Platform.SENSOR]
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
+CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
+
+PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.SENSOR]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up the component."""
+    """Set up the Stokercloud component."""
+
     hass.data[DOMAIN] = {}
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up Stokercloud from a config entry."""
     nbe_user = entry.data[CONF_USERNAME]
-    stokerCloud = StokerCloudClient(nbe_user)
+    nbe_pass = entry.data[CONF_PASSWORD]
+    stokerCloud = StokerCloudClient(nbe_user, nbe_pass)
 
     # Fetch initial data so we have data when entities subscribe
     coordinator = IntegrationCoordinator(hass, stokerCloud, nbe_user, 60)
-
     await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][entry.entry_id] = HassIntegration(coordinator, nbe_user)
@@ -100,35 +106,21 @@ class IntegrationCoordinator(DataUpdateCoordinator):
             return controller_data
 
         except:
-            _LOGGER.error("StecaGridCoordinator _async_update_data failed")
-        # except ApiAuthError as err:
-        #     # Raising ConfigEntryAuthFailed will cancel future updates
-        #     # and start a config flow with SOURCE_REAUTH (async_step_reauth)
-        #     raise ConfigEntryAuthFailed from err
-        # except ApiError as err:
-        #     raise UpdateFailed(f"Error communicating with API: {err}")
+            _LOGGER.error("Stokercloud _async_update_data failed")
 
 
-@dataclass
-class IntegrationEntityDescription(SensorEntityDescription):
-    """Describes Stecagrid sensor entity."""
+@dataclass(frozen=True, kw_only=True)
+class IntegrationSensorEntityDescription(SensorEntityDescription):
+    """Custom SensorEntityDescription with extra attributes."""
 
-    def __init__(
-        self,
-        key,
-        name,
-        icon,
-        device_class,
-        native_unit_of_measurement,
-        value,
-        format=None,
-    ):
-        super().__init__(key)
-        self.key = key
-        self.name = name
-        self.icon = icon
-        if device_class is not None:
-            self.device_class = device_class
-        self.native_unit_of_measurement = native_unit_of_measurement
-        self.value = value
-        self.format = format
+    value: Any  # extra field
+    format: str | None = None  # optional extra field
+
+
+@dataclass(frozen=True, kw_only=True)
+class IntegrationNumberEntityDescription(NumberEntityDescription):
+    """Custom SensorEntityDescription with extra attributes."""
+
+    value: Any  # extra field
+    format: str | None = None  # optional extra field
+    updateParams: list[str] = field(default_factory=list)  # optional extra field

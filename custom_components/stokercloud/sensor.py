@@ -20,9 +20,8 @@ from homeassistant.const import (
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import IntegrationEntityDescription, IntegrationCoordinator
+from . import IntegrationCoordinator, IntegrationSensorEntityDescription
 from .const import DOMAIN, MANUFACTURER, MODEL, STATE_STATE
-from .stokercloud_api import State
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,13 +46,13 @@ class StokerCloudSensor(CoordinatorEntity, SensorEntity):
     def __init__(
         self,
         coordinator: IntegrationCoordinator,
-        sensor: IntegrationEntityDescription,
+        sensor: IntegrationSensorEntityDescription,
         client,
     ):
         """Initialize the sensor."""
         self._data = client
         self.coordinator = coordinator
-        self.entity_description: IntegrationEntityDescription = sensor
+        self.entity_description: IntegrationSensorEntityDescription = sensor
         self._attr_unique_id = f"{self.coordinator._alias}_{sensor.key}"
         self._attr_name = f"{self.coordinator._alias} {sensor.name}"
 
@@ -118,8 +117,8 @@ class StokerCloudSensor(CoordinatorEntity, SensorEntity):
             self.async_write_ha_state()
 
 
-SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
-    IntegrationEntityDescription(
+SENSORS_BOILER: tuple[IntegrationSensorEntityDescription, ...] = (
+    IntegrationSensorEntityDescription(
         key="frontdata_1_value",
         name="Boiler Temperature",
         icon="mdi:thermometer",
@@ -127,7 +126,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="frontdata_2_value",
         name="Boiler Temperature Requested",
         icon="mdi:thermometer-chevron-up",
@@ -135,7 +134,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="miscdata_output",
         name="Boiler Effect",
         icon="mdi:gas-burner",
@@ -143,7 +142,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="miscdata_outputpct",
         name="Boiler Effect pct",
         icon="mdi:gas-burner",
@@ -151,7 +150,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="frontdata_3_value",
         name="Current Water Heater Temperature",
         icon="mdi:thermometer",
@@ -159,7 +158,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="frontdata_4_value",
         name="Requested Water Heater Temperature",
         icon="mdi:thermometer-chevron-up",
@@ -167,15 +166,15 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
-        key="frontdata_0_value",
-        name="Hopper content",
-        icon="mdi:information",
-        device_class=SensorDeviceClass.VOLUME,
-        native_unit_of_measurement=UnitOfMass.KILOGRAMS,
-        value=lambda data, key: data[key],
-    ),
-    IntegrationEntityDescription(
+    # IntegrationSensorEntityDescription(
+    #     key="frontdata_0_value",
+    #     name="Hopper content",
+    #     icon="mdi:information",
+    #     device_class=SensorDeviceClass.VOLUME,
+    #     native_unit_of_measurement=UnitOfMass.KILOGRAMS,
+    #     value=lambda data, key: data[key],
+    # ),
+    IntegrationSensorEntityDescription(
         key="hopperdata_2_value",
         name="Total Consumption",
         icon="mdi:counter",
@@ -183,7 +182,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfMass.KILOGRAMS,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="miscdata_state_value",
         name="State",
         icon="mdi:information",
@@ -191,7 +190,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=None,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="serial",
         name="Serial no",
         icon="mdi:information",
@@ -199,7 +198,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=None,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="miscdata_clock_value",
         name="Clock",
         icon="mdi:clock-digital",
@@ -207,7 +206,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=None,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="infomessages_0",
         name="Status message",
         icon="mdi:information",
@@ -215,7 +214,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=None,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="weatherdata_0_value",
         name="Weather City",
         icon="mdi:information",
@@ -223,7 +222,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=None,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="weatherdata_1_value",
         name="Weather Outside tempererature",
         icon="mdi:information",
@@ -231,7 +230,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="weatherdata_2_value",
         name="Weather Wind speed",
         icon="mdi:information",
@@ -239,7 +238,7 @@ SENSORS_BOILER: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
         value=lambda data, key: data[key],
     ),
-    IntegrationEntityDescription(
+    IntegrationSensorEntityDescription(
         key="weatherdata_3_value",
         name="Weather Wind direction",
         icon="mdi:information",
