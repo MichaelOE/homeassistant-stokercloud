@@ -1,8 +1,8 @@
-name: Create Release on Commit
+name: Create Release From manifest.json
 
 on:
   push:
-    branches: [ "main" ]   # <-- change the branch if needed
+    branches: [ "main" ]   # adjust if needed
 
 jobs:
   release:
@@ -12,17 +12,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Create tag
-      id: tag
+    - name: Read version from manifest.json
+      id: manifest
       run: |
-        # Generate a tag based on timestamp
-        TAG="v$(date +'%Y%m%d-%H%M%S')"
-        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        VERSION=$(jq -r '.version' custom_components/stokercloud/manifest.json)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ steps.tag.outputs.tag }}
-        name: Release ${{ steps.tag.outputs.tag }}
+        tag_name: v${{ steps.manifest.outputs.version }}
+        name: Release v${{ steps.manifest.outputs.version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
