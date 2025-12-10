@@ -1,0 +1,28 @@
+name: Create Release on Commit
+
+on:
+  push:
+    branches: [ "main" ]   # <-- change the branch if needed
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Create tag
+      id: tag
+      run: |
+        # Generate a tag based on timestamp
+        TAG="v$(date +'%Y%m%d-%H%M%S')"
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: Release ${{ steps.tag.outputs.tag }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
