@@ -2,10 +2,11 @@ from homeassistant.components.number import (
     NumberDeviceClass,
     NumberEntity,
     NumberMode,
+    RestoreEntity,
     callback,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfMass
+from homeassistant.const import UnitOfEnergy, UnitOfMass
 from homeassistant.core import _LOGGER, HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -43,7 +44,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         self.async_write_ha_state()
 
 
-class IntegrationNumber(CoordinatorEntity, NumberEntity):
+class IntegrationNumber(CoordinatorEntity, NumberEntity, RestoreEntity):
     def __init__(
         self,
         client,
@@ -57,10 +58,21 @@ class IntegrationNumber(CoordinatorEntity, NumberEntity):
         self._attr_unique_id = f"{self.coordinator._alias}_{number.key}"
         self._attr_name = f"{self.coordinator._alias} {number.name}"
 
-        self._attr_native_value = None
+        # self._attr_native_value = None
         # self._attr_min_value = None
         # self._attr_max_value = None
         # self._attr_step = number.step
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in ("unknown", "unavailable"):
+            self._attr_native_value = float(last_state.state)
+        else:
+            # FIRST TIME ONLY
+            value = self.coordinator.data[self.entity_description.key]
+            self._attr_native_value = value
 
     @property
     def device_info(self):
@@ -89,13 +101,18 @@ class IntegrationNumber(CoordinatorEntity, NumberEntity):
     async def async_set_native_value(self, value: float):
         # send value to device / API here
 
-        retval = await self.coordinator._api.update_controller_value(
-            self.entity_description.updateParams[0],
-            self.entity_description.updateParams[1],
-            value,
-        )
+        if not self.entity_description.key.startswith("internal"):
+            retval = await self.coordinator._api.update_controller_value(
+                self.entity_description.updateParams[0],
+                self.entity_description.updateParams[1],
+                value,
+            )
+            self._attr_native_value = retval.value
+        else:
+            self._attr_native_value = value
+            self.coordinator.data[self.entity_description.key] = value
+            await self.coordinator.async_save()  # persist to disk
 
-        self._attr_native_value = retval.value
         self.async_write_ha_state()
 
     @callback
@@ -104,6 +121,9 @@ class IntegrationNumber(CoordinatorEntity, NumberEntity):
         data_available = False
 
         # if self.entity_description.key:
+        if not self.coordinator.data:
+            _LOGGER.warning("StokerCloudNumber: No data received from coordinator")
+            return
         if self.entity_description.key in self.coordinator.data:
             val = self.coordinator.data[self.entity_description.key]
 
@@ -134,5 +154,19 @@ NUMBER_SENSORS: tuple[IntegrationNumberEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfMass.KILOGRAMS,
         value=lambda data, key: data[key],
         updateParams=["hopper.content", "hopper.content"],
+    ),
+    IntegrationNumberEntityDescription(
+        key="internaldata_pellet_energy_per_kg",
+        name="Pellet energy (kWh/kg)",
+        icon="mdi:fire",
+        default_value=5.0,
+        native_min_value=0,
+        native_max_value=10,
+        native_step=0.1,
+        mode=NumberMode.BOX,
+        device_class=NumberDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value=lambda data, key: data[key],
+        updateParams=["internal", "pellet.energy_per_kg"],
     ),
 )

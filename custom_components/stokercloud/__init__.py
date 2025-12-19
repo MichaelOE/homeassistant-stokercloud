@@ -13,6 +13,7 @@ from homeassistant.components.sensor import SensorEntityDescription, dataclass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN
@@ -40,6 +41,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Fetch initial data so we have data when entities subscribe
     coordinator = IntegrationCoordinator(hass, stokerCloud, nbe_user, 60)
+
+    # 🔑 Load persisted data from disk
+    await coordinator.async_load()
+
     await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][entry.entry_id] = HassIntegration(coordinator, nbe_user)
@@ -94,8 +99,20 @@ class IntegrationCoordinator(DataUpdateCoordinator):
             # Polling interval. Will only be polled if there are subscribers.
             update_interval=timedelta(seconds=15),
         )
+
+        self.store = Store(hass, 1, "stokercloud_data.json")
+        self.data = {}
+
         self._api = stokerClient
         self._alias = alias
+
+    async def async_load(self):
+        stored = await self.store.async_load()
+        if stored is not None:
+            self.data.update(stored)
+
+    async def async_save(self):
+        await self.store.async_save(self.data)
 
     async def _async_update_data(self):
         # Fetch data from API endpoint. This is the place to pre-process the data to lookup tables so entities can quickly look up their data.
@@ -103,6 +120,12 @@ class IntegrationCoordinator(DataUpdateCoordinator):
         try:
             # controller_data = await self._api.controller_data()
             controller_data = await self._api.controller_data_json()
+
+            # 🔑 Preserve internal values across refreshes
+            for key, value in self.data.items():
+                if key.startswith("internal"):
+                    controller_data[key] = value
+
             return controller_data
 
         except:
@@ -123,4 +146,5 @@ class IntegrationNumberEntityDescription(NumberEntityDescription):
 
     value: Any  # extra field
     format: str | None = None  # optional extra field
+    default_value: float | None = None  # optional extra field
     updateParams: list[str] = field(default_factory=list)  # optional extra field
